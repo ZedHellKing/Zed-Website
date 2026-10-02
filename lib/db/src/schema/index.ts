@@ -17,4 +17,10 @@
 //   export type InsertPost = z.infer<typeof insertPostSchema>;
 //   export type Post = typeof postsTable.$inferSelect;
 
-export {}
+export * from "./profiles";
+export * from "./bots";
+export * from "./botLogs";
+export * from "./posts";
+export * from "./postLikes";
+export * from "./conversations";
+export * from "./directMessages";

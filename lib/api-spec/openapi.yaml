@@ -3,13 +3,21 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: API for the Zed bot dashboard and member community
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: dashboard
+    description: Dashboard overview
+  - name: bots
+    description: Bot workspace and safe demo console
+  - name: profile
+    description: Member profile
+  - name: community
+    description: Community feed and direct messages
 paths:
   /healthz:
     get:
@@ -24,6 +32,324 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /dashboard:
+    get:
+      operationId: getDashboard
+      tags: [dashboard]
+      summary: Get dashboard summary
+      responses:
+        "200":
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+  /bots:
+    get:
+      operationId: listBots
+      tags: [bots]
+      summary: List the current member's bots
+      responses:
+        "200":
+          description: Bots
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Bot"
+    post:
+      operationId: createBot
+      tags: [bots]
+      summary: Create a bot workspace
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BotInput"
+      responses:
+        "201":
+          description: Created bot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Bot"
+  /bots/{botId}:
+    patch:
+      operationId: updateBot
+      tags: [bots]
+      summary: Update a bot workspace
+      parameters:
+        - name: botId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BotUpdate"
+      responses:
+        "200":
+          description: Updated bot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Bot"
+        "404":
+          description: Bot not found
+    delete:
+      operationId: deleteBot
+      tags: [bots]
+      summary: Delete a bot workspace
+      parameters:
+        - name: botId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Bot not found
+  /bots/{botId}/actions:
+    post:
+      operationId: runBotAction
+      tags: [bots]
+      summary: Run a safe demo console action
+      description: "This endpoint never executes operating-system shell commands. The first build returns clearly marked simulation output."
+      parameters:
+        - name: botId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BotActionInput"
+      responses:
+        "200":
+          description: Console action result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BotActionResult"
+        "400":
+          description: Unsupported command
+        "404":
+          description: Bot not found
+  /bots/{botId}/logs:
+    get:
+      operationId: listBotLogs
+      tags: [bots]
+      summary: List bot console events
+      parameters:
+        - name: botId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Console events
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BotLog"
+        "404":
+          description: Bot not found
+  /profile:
+    get:
+      operationId: getProfile
+      tags: [profile]
+      summary: Get the current member profile
+      responses:
+        "200":
+          description: Member profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Profile"
+    patch:
+      operationId: updateProfile
+      tags: [profile]
+      summary: Update the current member profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProfileUpdate"
+      responses:
+        "200":
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Profile"
+        "409":
+          description: Username already in use
+  /users:
+    get:
+      operationId: searchUsers
+      tags: [community]
+      summary: Find community members by username
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          description: Matching profiles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PublicProfile"
+  /feed:
+    get:
+      operationId: listFeed
+      tags: [community]
+      summary: List recent community posts
+      responses:
+        "200":
+          description: Posts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FeedPost"
+    post:
+      operationId: createPost
+      tags: [community]
+      summary: Publish a community post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PostInput"
+      responses:
+        "201":
+          description: Published post
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FeedPost"
+  /feed/{postId}/like:
+    post:
+      operationId: togglePostLike
+      tags: [community]
+      summary: Toggle a like on a post
+      parameters:
+        - name: postId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Updated post like state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LikeResult"
+        "404":
+          description: Post not found
+  /conversations:
+    get:
+      operationId: listConversations
+      tags: [community]
+      summary: List the current member's conversations
+      responses:
+        "200":
+          description: Conversations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Conversation"
+    post:
+      operationId: createConversation
+      tags: [community]
+      summary: Start a direct conversation by username
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConversationInput"
+      responses:
+        "201":
+          description: Conversation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Conversation"
+        "404":
+          description: Member not found
+  /conversations/{conversationId}/messages:
+    get:
+      operationId: listMessages
+      tags: [community]
+      summary: List messages in a conversation
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Messages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DirectMessage"
+        "404":
+          description: Conversation not found
+    post:
+      operationId: sendMessage
+      tags: [community]
+      summary: Send a direct message
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageInput"
+      responses:
+        "201":
+          description: Sent message
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DirectMessage"
+        "404":
+          description: Conversation not found
 components:
   schemas:
     HealthStatus:
@@ -33,4 +359,142 @@ components:
           type: string
       required:
         - status
+    DashboardSummary:
+      type: object
+      properties:
+        botCount:
+          type: integer
+        runningCount:
+          type: integer
+        communityPostCount:
+          type: integer
+        recentActivity:
+          type: array
+          items:
+            $ref: "#/components/schemas/ActivityItem"
+      required: [botCount, runningCount, communityPostCount, recentActivity]
+    ActivityItem:
+      type: object
+      properties:
+        id: { type: string }
+        text: { type: string }
+        createdAt: { type: string, format: date-time }
+        kind: { type: string, enum: [bot, community, system] }
+      required: [id, text, createdAt, kind]
+    Bot:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        platform: { type: string, enum: [messenger] }
+        pageName: { type: ["string", "null"] }
+        status: { type: string, enum: [setup_required, stopped, running] }
+        mode: { type: string, enum: [simulation] }
+        createdAt: { type: string, format: date-time }
+      required: [id, name, platform, pageName, status, mode, createdAt]
+    BotInput:
+      type: object
+      properties:
+        name: { type: string, minLength: 2, maxLength: 64 }
+      required: [name]
+    BotUpdate:
+      type: object
+      properties:
+        name: { type: string, minLength: 2, maxLength: 64 }
+      required: [name]
+    BotActionInput:
+      type: object
+      properties:
+        action: { type: string, enum: [start, stop, restart, command] }
+        command: { type: string, maxLength: 120 }
+      required: [action]
+    BotActionResult:
+      type: object
+      properties:
+        bot: { $ref: "#/components/schemas/Bot" }
+        log: { $ref: "#/components/schemas/BotLog" }
+        supportedCommands:
+          type: array
+          items: { type: string }
+      required: [bot, log, supportedCommands]
+    BotLog:
+      type: object
+      properties:
+        id: { type: integer }
+        botId: { type: integer }
+        level: { type: string, enum: [info, success, warning, error] }
+        message: { type: string }
+        createdAt: { type: string, format: date-time }
+      required: [id, botId, level, message, createdAt]
+    Profile:
+      allOf:
+        - $ref: "#/components/schemas/PublicProfile"
+        - type: object
+          properties:
+            coverUrl: { type: ["string", "null"] }
+            bio: { type: ["string", "null"] }
+          required: [coverUrl, bio]
+    PublicProfile:
+      type: object
+      properties:
+        id: { type: string }
+        username: { type: string }
+        displayName: { type: string }
+        avatarUrl: { type: ["string", "null"] }
+      required: [id, username, displayName, avatarUrl]
+    ProfileUpdate:
+      type: object
+      properties:
+        username: { type: string, minLength: 3, maxLength: 24 }
+        displayName: { type: string, minLength: 1, maxLength: 48 }
+        avatarUrl: { type: ["string", "null"], maxLength: 2048 }
+        coverUrl: { type: ["string", "null"], maxLength: 2048 }
+        bio: { type: ["string", "null"], maxLength: 280 }
+    FeedPost:
+      type: object
+      properties:
+        id: { type: integer }
+        author: { $ref: "#/components/schemas/PublicProfile" }
+        text: { type: string }
+        createdAt: { type: string, format: date-time }
+        likeCount: { type: integer }
+        likedByMe: { type: boolean }
+      required: [id, author, text, createdAt, likeCount, likedByMe]
+    PostInput:
+      type: object
+      properties:
+        text: { type: string, minLength: 1, maxLength: 1000 }
+      required: [text]
+    LikeResult:
+      type: object
+      properties:
+        liked: { type: boolean }
+        likeCount: { type: integer }
+      required: [liked, likeCount]
+    Conversation:
+      type: object
+      properties:
+        id: { type: integer }
+        otherUser: { $ref: "#/components/schemas/PublicProfile" }
+        lastMessage: { type: ["string", "null"] }
+        updatedAt: { type: string, format: date-time }
+      required: [id, otherUser, lastMessage, updatedAt]
+    ConversationInput:
+      type: object
+      properties:
+        username: { type: string, minLength: 3, maxLength: 24 }
+      required: [username]
+    DirectMessage:
+      type: object
+      properties:
+        id: { type: integer }
+        sender: { $ref: "#/components/schemas/PublicProfile" }
+        text: { type: string }
+        createdAt: { type: string, format: date-time }
+      required: [id, sender, text, createdAt]
+    MessageInput:
+      type: object
+      properties:
+        text: { type: string, minLength: 1, maxLength: 2000 }
+      required: [text]
 
