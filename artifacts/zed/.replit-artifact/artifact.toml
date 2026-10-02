@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Zed"
+description = "منصة عربية لإدارة بوتات Meta الرسمية ومجتمع تواصل صغير، مع لوحة تحكم وسجل تشغيل وملفات شخصية."
+version = "1.0.0"
+id = "artifacts/zed"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 26142
+
+[services.development]
+run = "pnpm --filter @workspace/zed run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/zed", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/zed/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "26142"
+BASE_PATH = "/"
