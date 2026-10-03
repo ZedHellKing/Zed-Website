@@ -25,6 +25,9 @@ import type {
   BotActionResult,
   BotInput,
   BotLog,
+  BotPackageUploadComplete,
+  BotPackageUploadRequest,
+  BotPackageUploadUrl,
   BotUpdate,
   Conversation,
   ConversationInput,
@@ -639,6 +642,186 @@ export const useRunBotAction = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getRunBotActionMutationOptions(options));
+    }
+
+export const getRequestBotPackageUploadUrl = (botId: number,) => {
+
+
+
+
+  return `/api/bots/${botId}/uploads/request-url`
+}
+
+/**
+ * Creates an owner-bound, short-lived upload ticket. The ZIP is stored privately and is not executed by this service.
+ * @summary Request a private upload URL for a bot project ZIP
+ */
+export const requestBotPackageUpload = async (botId: number,
+    botPackageUploadRequest: BotPackageUploadRequest, options?: Parameters<typeof customFetch>[1]): Promise<BotPackageUploadUrl> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<BotPackageUploadUrl>(getRequestBotPackageUploadUrl(botId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(botPackageUploadRequest)
+  }
+);}
+
+
+
+
+
+export const getRequestBotPackageUploadMutationKey = () => ['requestBotPackageUpload'] as const;
+
+export const getRequestBotPackageUploadMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestBotPackageUpload>>, TError,RequestBotPackageUploadMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof requestBotPackageUpload>>, TError,RequestBotPackageUploadMutationVariables, TContext> => {
+
+const mutationKey = getRequestBotPackageUploadMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof requestBotPackageUpload>>, RequestBotPackageUploadMutationVariables> = (props) => {
+          const {botId,data} = props ?? {};
+
+          return  requestBotPackageUpload(botId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RequestBotPackageUploadMutationResult = NonNullable<Awaited<ReturnType<typeof requestBotPackageUpload>>>
+    export type RequestBotPackageUploadMutationBody = BodyType<BotPackageUploadRequest>
+    export type RequestBotPackageUploadMutationError = ErrorType<void>
+    export type RequestBotPackageUploadMutationVariables = {botId: number;data: BodyType<BotPackageUploadRequest>}
+
+    /**
+ * @summary Request a private upload URL for a bot project ZIP
+ */
+export const useRequestBotPackageUpload = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestBotPackageUpload>>, TError,RequestBotPackageUploadMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof requestBotPackageUpload>>,
+        TError,
+        RequestBotPackageUploadMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRequestBotPackageUploadMutationOptions(options));
+    }
+
+export const getCompleteBotPackageUploadUrl = (botId: number,) => {
+
+
+
+
+  return `/api/bots/${botId}/uploads/complete`
+}
+
+/**
+ * Verifies the owner-bound upload ticket and stores package metadata; uploaded code is not executed.
+ * @summary Attach an uploaded ZIP package to a bot
+ */
+export const completeBotPackageUpload = async (botId: number,
+    botPackageUploadComplete: BotPackageUploadComplete, options?: Parameters<typeof customFetch>[1]): Promise<Bot> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<Bot>(getCompleteBotPackageUploadUrl(botId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(botPackageUploadComplete)
+  }
+);}
+
+
+
+
+
+export const getCompleteBotPackageUploadMutationKey = () => ['completeBotPackageUpload'] as const;
+
+export const getCompleteBotPackageUploadMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof completeBotPackageUpload>>, TError,CompleteBotPackageUploadMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof completeBotPackageUpload>>, TError,CompleteBotPackageUploadMutationVariables, TContext> => {
+
+const mutationKey = getCompleteBotPackageUploadMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof completeBotPackageUpload>>, CompleteBotPackageUploadMutationVariables> = (props) => {
+          const {botId,data} = props ?? {};
+
+          return  completeBotPackageUpload(botId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CompleteBotPackageUploadMutationResult = NonNullable<Awaited<ReturnType<typeof completeBotPackageUpload>>>
+    export type CompleteBotPackageUploadMutationBody = BodyType<BotPackageUploadComplete>
+    export type CompleteBotPackageUploadMutationError = ErrorType<void>
+    export type CompleteBotPackageUploadMutationVariables = {botId: number;data: BodyType<BotPackageUploadComplete>}
+
+    /**
+ * @summary Attach an uploaded ZIP package to a bot
+ */
+export const useCompleteBotPackageUpload = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof completeBotPackageUpload>>, TError,CompleteBotPackageUploadMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof completeBotPackageUpload>>,
+        TError,
+        CompleteBotPackageUploadMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCompleteBotPackageUploadMutationOptions(options));
     }
 
 export const getListBotLogsUrl = (botId: number,) => {

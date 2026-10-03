@@ -63,7 +63,44 @@ export interface Bot {
   pageName: string | null;
   status: BotStatus;
   mode: BotMode;
+  /** @nullable */
+  packageName: string | null;
+  /** @nullable */
+  packageSize: number | null;
+  /** @nullable */
+  packageUploadedAt: string | null;
   createdAt: string;
+}
+
+export interface BotPackageUploadRequest {
+  /**
+     * @minLength 1
+     * @maxLength 150
+     */
+  name: string;
+  /**
+     * @minimum 1
+     * @maximum 26214400
+     */
+  size: number;
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  contentType: string;
+}
+
+export interface BotPackageUploadUrl {
+  uploadURL: string;
+  objectPath: string;
+}
+
+export interface BotPackageUploadComplete {
+  /**
+     * @minLength 1
+     * @maxLength 512
+     */
+  objectPath: string;
 }
 
 export interface BotInput {

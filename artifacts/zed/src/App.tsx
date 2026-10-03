@@ -18,7 +18,8 @@ import {
   getListConversationsQueryKey, useCreateConversation, useListMessages, getListMessagesQueryKey,
   useSendMessage
 } from '@workspace/api-client-react';
-import type { Bot, BotLog, Conversation, FeedPost, Profile, PublicProfile } from '@workspace/api-client-react';
+import type { Bot, BotLog, Conversation, FeedPost, PublicProfile } from '@workspace/api-client-react';
+import { BotPackageUpload } from '@/components/BotPackageUpload';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -314,7 +315,7 @@ function BotConsole() {
   const client = useQueryClient();
   const allBots = useListBots({ query: { queryKey: getListBotsQueryKey() } });
   const bot = allBots.data?.find(row => row.id === validId);
-  const logs = useListBotLogs(validId, { query: { enabled: validId > 0, queryKey: getListBotLogsQueryKey(validId) } });
+  const logs = useListBotLogs(validId, { query: { enabled: validId > 0, queryKey: getListBotLogsQueryKey(validId), refetchInterval: bot?.status === 'running' ? 3000 : false } });
   const action = useRunBotAction();
   const update = useUpdateBot();
   const remove = useDeleteBot();
@@ -335,6 +336,7 @@ function BotConsole() {
       <section className="console-hero"><div className="console-bot-symbol"><BotIcon size={27}/></div><div className="console-title">{rename ? <div className="rename-inline"><Input value={newName} onChange={e => setNewName(e.target.value)} data-testid="input-rename-bot"/><Button onClick={saveName} data-testid="button-save-bot-name" size="sm"><Check size={15}/></Button></div> : <h2>{bot.name}</h2>}<div className="console-subline"><span className={`bot-status ${botStatus(bot.status).cls}`}><i/>{botStatus(bot.status).title}</span><span>·</span><span>Meta Messenger</span><span>·</span><span>{bot.pageName || 'صفحة غير مرتبطة'}</span></div></div>
         <Button variant="outline" onClick={() => { setNewName(bot.name); setRename(true); }} data-testid="button-rename-bot" className="gap-2"><Settings2 size={15}/> تعديل الاسم</Button>
       </section>
+      <BotPackageUpload bot={bot}/>
       <div className="console-grid">
         <section className="section-card console-control"><div className="section-title"><div><span className="section-overline">تحكم آمن</span><h2>الإجراءات</h2></div><span className="chip simulation-chip">simulation</span></div>
           <p className="console-explain">الإجراءات التالية تحاكي حالات التشغيل ولا تتصل بخدمات خارجية.</p>
@@ -347,7 +349,7 @@ function BotConsole() {
           <p className="console-warning"><ShieldCheck size={14}/> لا تُنفّذ أوامر النظام أو التعليمات البرمجية هنا.</p>
           <button onClick={deleteWorkspace} disabled={remove.isPending} data-testid="button-delete-bot" className="delete-action">حذف مساحة العمل <ArrowLeft size={14}/></button>
         </section>
-        <section className="section-card logs-card"><div className="section-title"><div><span className="section-overline">سجل النشاط</span><h2>مخرجات المساحة</h2></div><span className="logs-live"><i/> LIVE</span></div>
+        <section className="section-card logs-card"><div className="section-title"><div><span className="section-overline">سجل المحاكاة</span><h2>مخرجات المساحة</h2></div><span className="logs-live logs-simulation">SIMULATION</span></div>
           {logs.isLoading ? <LoadingRows/> : logs.isError ? <ErrorState retry={() => logs.refetch()}/> : logs.data?.length ? <div className="log-list">{logs.data.map(log => <LogRow key={log.id} log={log}/>)}</div> : <EmptyState icon={Activity} title="لا توجد أحداث بعد" text="ستظهر هنا مخرجات المحاكاة عند تنفيذ إجراء."/>}
         </section>
       </div>

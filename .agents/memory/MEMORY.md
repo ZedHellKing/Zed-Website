@@ -1,0 +1,1 @@
+- [Bot package execution safety](bot-package-safety.md) — uploaded ZIPs stay private and inert; real Messenger bots require a separate isolated worker.

@@ -43,6 +43,9 @@ export const ListBotsResponseItem = zod.object({
   "pageName": zod.string().nullable(),
   "status": zod.enum(['setup_required', 'stopped', 'running']),
   "mode": zod.enum(['simulation']),
+  "packageName": zod.string().nullable(),
+  "packageSize": zod.number().int().nullable(),
+  "packageUploadedAt": zod.coerce.date().nullable(),
   "createdAt": zod.coerce.date()
 })
 export const ListBotsResponse = zod.array(ListBotsResponseItem)
@@ -67,6 +70,9 @@ export const CreateBotResponse = zod.object({
   "pageName": zod.string().nullable(),
   "status": zod.enum(['setup_required', 'stopped', 'running']),
   "mode": zod.enum(['simulation']),
+  "packageName": zod.string().nullable(),
+  "packageSize": zod.number().int().nullable(),
+  "packageUploadedAt": zod.coerce.date().nullable(),
   "createdAt": zod.coerce.date()
 })
 
@@ -94,6 +100,9 @@ export const UpdateBotResponse = zod.object({
   "pageName": zod.string().nullable(),
   "status": zod.enum(['setup_required', 'stopped', 'running']),
   "mode": zod.enum(['simulation']),
+  "packageName": zod.string().nullable(),
+  "packageSize": zod.number().int().nullable(),
+  "packageUploadedAt": zod.coerce.date().nullable(),
   "createdAt": zod.coerce.date()
 })
 
@@ -133,6 +142,9 @@ export const RunBotActionResponse = zod.object({
   "pageName": zod.string().nullable(),
   "status": zod.enum(['setup_required', 'stopped', 'running']),
   "mode": zod.enum(['simulation']),
+  "packageName": zod.string().nullable(),
+  "packageSize": zod.number().int().nullable(),
+  "packageUploadedAt": zod.coerce.date().nullable(),
   "createdAt": zod.coerce.date()
 }),
   "log": zod.object({
@@ -143,6 +155,64 @@ export const RunBotActionResponse = zod.object({
   "createdAt": zod.coerce.date()
 }),
   "supportedCommands": zod.array(zod.string())
+})
+
+
+/**
+ * Creates an owner-bound, short-lived upload ticket. The ZIP is stored privately and is not executed by this service.
+ * @summary Request a private upload URL for a bot project ZIP
+ */
+export const RequestBotPackageUploadParams = zod.object({
+  "botId": zod.coerce.number().int()
+})
+
+export const requestBotPackageUploadBodyNameMax = 150;
+
+export const requestBotPackageUploadBodySizeMax = 26214400;
+
+export const requestBotPackageUploadBodyContentTypeMax = 100;
+
+
+
+export const RequestBotPackageUploadBody = zod.object({
+  "name": zod.string().min(1).max(requestBotPackageUploadBodyNameMax),
+  "size": zod.number().int().min(1).max(requestBotPackageUploadBodySizeMax),
+  "contentType": zod.string().min(1).max(requestBotPackageUploadBodyContentTypeMax)
+})
+
+export const RequestBotPackageUploadResponse = zod.object({
+  "uploadURL": zod.string().url(),
+  "objectPath": zod.string()
+})
+
+
+/**
+ * Verifies the owner-bound upload ticket and stores package metadata; uploaded code is not executed.
+ * @summary Attach an uploaded ZIP package to a bot
+ */
+export const CompleteBotPackageUploadParams = zod.object({
+  "botId": zod.coerce.number().int()
+})
+
+export const completeBotPackageUploadBodyObjectPathMax = 512;
+
+
+
+export const CompleteBotPackageUploadBody = zod.object({
+  "objectPath": zod.string().min(1).max(completeBotPackageUploadBodyObjectPathMax)
+})
+
+export const CompleteBotPackageUploadResponse = zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "platform": zod.enum(['messenger']),
+  "pageName": zod.string().nullable(),
+  "status": zod.enum(['setup_required', 'stopped', 'running']),
+  "mode": zod.enum(['simulation']),
+  "packageName": zod.string().nullable(),
+  "packageSize": zod.number().int().nullable(),
+  "packageUploadedAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date()
 })
 
 

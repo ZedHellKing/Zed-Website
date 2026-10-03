@@ -20,6 +20,7 @@
 export * from "./profiles";
 export * from "./bots";
 export * from "./botLogs";
+export * from "./botPackageUploads";
 export * from "./posts";
 export * from "./postLikes";
 export * from "./conversations";

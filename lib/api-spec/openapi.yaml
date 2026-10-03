@@ -145,6 +145,64 @@ paths:
           description: Unsupported command
         "404":
           description: Bot not found
+  /bots/{botId}/uploads/request-url:
+    post:
+      operationId: requestBotPackageUpload
+      tags: [bots]
+      summary: Request a private upload URL for a bot project ZIP
+      description: Creates an owner-bound, short-lived upload ticket. The ZIP is stored privately and is not executed by this service.
+      parameters:
+        - name: botId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BotPackageUploadRequest"
+      responses:
+        "200":
+          description: Private upload URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BotPackageUploadUrl"
+        "400":
+          description: Invalid package metadata
+        "404":
+          description: Bot not found
+  /bots/{botId}/uploads/complete:
+    post:
+      operationId: completeBotPackageUpload
+      tags: [bots]
+      summary: Attach an uploaded ZIP package to a bot
+      description: Verifies the owner-bound upload ticket and stores package metadata; uploaded code is not executed.
+      parameters:
+        - name: botId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BotPackageUploadComplete"
+      responses:
+        "200":
+          description: Updated bot workspace
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Bot"
+        "404":
+          description: Bot or upload ticket not found
+        "410":
+          description: Upload ticket expired
   /bots/{botId}/logs:
     get:
       operationId: listBotLogs
@@ -390,8 +448,29 @@ components:
         pageName: { type: ["string", "null"] }
         status: { type: string, enum: [setup_required, stopped, running] }
         mode: { type: string, enum: [simulation] }
+        packageName: { type: ["string", "null"] }
+        packageSize: { type: ["integer", "null"] }
+        packageUploadedAt: { type: ["string", "null"], format: date-time }
         createdAt: { type: string, format: date-time }
-      required: [id, name, platform, pageName, status, mode, createdAt]
+      required: [id, name, platform, pageName, status, mode, packageName, packageSize, packageUploadedAt, createdAt]
+    BotPackageUploadRequest:
+      type: object
+      properties:
+        name: { type: string, minLength: 1, maxLength: 150 }
+        size: { type: integer, minimum: 1, maximum: 26214400 }
+        contentType: { type: string, minLength: 1, maxLength: 100 }
+      required: [name, size, contentType]
+    BotPackageUploadUrl:
+      type: object
+      properties:
+        uploadURL: { type: string, format: uri }
+        objectPath: { type: string }
+      required: [uploadURL, objectPath]
+    BotPackageUploadComplete:
+      type: object
+      properties:
+        objectPath: { type: string, minLength: 1, maxLength: 512 }
+      required: [objectPath]
     BotInput:
       type: object
       properties:

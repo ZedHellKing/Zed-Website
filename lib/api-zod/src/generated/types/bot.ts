@@ -17,5 +17,11 @@ export interface Bot {
   pageName: string | null;
   status: BotStatus;
   mode: BotMode;
+  /** @nullable */
+  packageName: string | null;
+  /** @nullable */
+  packageSize: number | null;
+  /** @nullable */
+  packageUploadedAt: Date | null;
   createdAt: Date;
 }

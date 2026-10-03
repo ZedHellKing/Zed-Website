@@ -1,14 +1,19 @@
 import { and, count, desc, eq } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 import {
-  BotActionResult,
   CreateBotBody,
   CreateBotResponse,
+  CompleteBotPackageUploadBody,
+  CompleteBotPackageUploadParams,
+  CompleteBotPackageUploadResponse,
   DeleteBotParams,
   GetDashboardResponse,
   ListBotLogsParams,
   ListBotLogsResponse,
   ListBotsResponse,
+  RequestBotPackageUploadBody,
+  RequestBotPackageUploadParams,
+  RequestBotPackageUploadResponse,
   RunBotActionBody,
   RunBotActionParams,
   RunBotActionResponse,
@@ -18,14 +23,19 @@ import {
 } from "@workspace/api-zod";
 import {
   botLogsTable,
+  botPackageUploadsTable,
   botsTable,
   db,
   postsTable,
 } from "@workspace/db";
 import { ensureMemberProfile } from "../lib/memberProfiles";
+import { ObjectNotFoundError, ObjectStorageService } from "../lib/objectStorage";
+import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
 const supportedCommands = ["help", "status", "uptime", "logs", "clear"];
+const maxPackageSize = 25 * 1024 * 1024;
+const objectStorage = new ObjectStorageService();
 
 function iso(value: Date): string {
   return value.toISOString();
@@ -33,7 +43,17 @@ function iso(value: Date): string {
 
 function serializeBot(bot: typeof botsTable.$inferSelect) {
   return {
-    ...bot,
+    id: bot.id,
+    name: bot.name,
+    platform: bot.platform,
+    pageName: bot.pageName,
+    status: bot.status,
+    mode: bot.mode,
+    packageName: bot.packageName,
+    packageSize: bot.packageSize,
+    packageUploadedAt: bot.packageUploadedAt
+      ? iso(bot.packageUploadedAt)
+      : null,
     createdAt: iso(bot.createdAt),
   };
 }
@@ -162,6 +182,164 @@ router.post("/bots", async (req, res): Promise<void> => {
   );
   res.status(201).json(CreateBotResponse.parse(serializeBot(bot)));
 });
+
+router.post(
+  "/bots/:botId/uploads/request-url",
+  async (req, res): Promise<void> => {
+    const params = RequestBotPackageUploadParams.safeParse(req.params);
+    const body = RequestBotPackageUploadBody.safeParse(req.body);
+    if (!params.success || !body.success) {
+      res.status(400).json({ error: "بيانات الملف غير صالحة." });
+      return;
+    }
+    const userId = res.locals.userId as string;
+    const bot = await getOwnedBot(params.data.botId, userId);
+    if (!bot) {
+      res.status(404).json({ error: "Bot not found" });
+      return;
+    }
+
+    const { size, contentType } = body.data;
+    const name =
+      body.data.name.replaceAll("\\", "/").split("/").pop() || "bot.zip";
+    if (!name.toLowerCase().endsWith(".zip") || size > maxPackageSize) {
+      res.status(400).json({
+        error: "ارفع ملف مشروع بصيغة ZIP لا يتجاوز حجمه 25 ميغابايت.",
+      });
+      return;
+    }
+    const allowedTypes = new Set([
+      "application/zip",
+      "application/x-zip-compressed",
+      "application/octet-stream",
+      "application/zip-compressed",
+    ]);
+    if (!allowedTypes.has(contentType.toLowerCase())) {
+      res.status(400).json({ error: "نوع الملف غير مدعوم." });
+      return;
+    }
+
+    try {
+      await ensureMemberProfile(userId);
+      const uploadUrl = await objectStorage.getObjectEntityUploadURL();
+      const objectPath = objectStorage.normalizeObjectEntityPath(uploadUrl);
+      await db.insert(botPackageUploadsTable).values({
+        botId: bot.id,
+        ownerId: userId,
+        objectPath,
+        originalName: name,
+        size,
+        contentType,
+        expiresAt: new Date(Date.now() + 15 * 60 * 1000),
+      });
+      res.json(
+        RequestBotPackageUploadResponse.parse({ uploadURL: uploadUrl, objectPath }),
+      );
+    } catch (error) {
+      logger.error({ err: error }, "Unable to create bot package upload URL");
+      res.status(503).json({
+        error: "تعذر تجهيز مساحة رفع الملف حالياً. حاول مرة أخرى لاحقاً.",
+      });
+    }
+  },
+);
+
+router.post(
+  "/bots/:botId/uploads/complete",
+  async (req, res): Promise<void> => {
+    const params = CompleteBotPackageUploadParams.safeParse(req.params);
+    const body = CompleteBotPackageUploadBody.safeParse(req.body);
+    if (!params.success || !body.success) {
+      res.status(400).json({ error: "مرجع رفع الملف غير صالح." });
+      return;
+    }
+
+    const userId = res.locals.userId as string;
+    const bot = await getOwnedBot(params.data.botId, userId);
+    if (!bot) {
+      res.status(404).json({ error: "Bot not found" });
+      return;
+    }
+    const [ticket] = await db
+      .select()
+      .from(botPackageUploadsTable)
+      .where(
+        and(
+          eq(botPackageUploadsTable.botId, bot.id),
+          eq(botPackageUploadsTable.ownerId, userId),
+          eq(botPackageUploadsTable.objectPath, body.data.objectPath),
+        ),
+      )
+      .limit(1);
+    if (!ticket) {
+      res.status(404).json({ error: "Upload ticket not found" });
+      return;
+    }
+    if (ticket.status !== "pending") {
+      res.status(409).json({ error: "تم إرفاق هذا الملف مسبقاً." });
+      return;
+    }
+    if (ticket.expiresAt.getTime() < Date.now()) {
+      res.status(410).json({ error: "انتهت صلاحية رابط الرفع. اطلب رابطاً جديداً." });
+      return;
+    }
+
+    try {
+      const objectFile = await objectStorage.getObjectEntityFile(ticket.objectPath);
+      const [metadata] = await objectFile.getMetadata();
+      const actualSize = Number(metadata.size ?? 0);
+      if (actualSize !== ticket.size || actualSize > maxPackageSize) {
+        res.status(400).json({
+          error: "حجم الملف المرفوع لا يطابق الحجم المتوقع.",
+        });
+        return;
+      }
+      await objectStorage.trySetObjectEntityAclPolicy(ticket.objectPath, {
+        owner: userId,
+        visibility: "private",
+      });
+
+      const uploadedAt = new Date();
+      const [updatedBot] = await db
+        .update(botsTable)
+        .set({
+          packagePath: ticket.objectPath,
+          packageName: ticket.originalName,
+          packageSize: actualSize,
+          packageUploadedAt: uploadedAt,
+        })
+        .where(and(eq(botsTable.id, bot.id), eq(botsTable.ownerId, userId)))
+        .returning();
+      await db
+        .update(botPackageUploadsTable)
+        .set({ status: "complete", completedAt: uploadedAt })
+        .where(eq(botPackageUploadsTable.id, ticket.id));
+      await appendLog(
+        bot.id,
+        "warning",
+        `تم حفظ ${ticket.originalName} في التخزين الخاص. لم يتم تشغيل الكود المرفوع.`,
+      );
+
+      if (bot.packagePath && bot.packagePath !== ticket.objectPath) {
+        try {
+          await objectStorage.deleteObjectEntity(bot.packagePath);
+        } catch (error) {
+          logger.warn({ err: error, botId: bot.id }, "Could not remove replaced bot package");
+        }
+      }
+      res.json(CompleteBotPackageUploadResponse.parse(serializeBot(updatedBot)));
+    } catch (error) {
+      if (error instanceof ObjectNotFoundError) {
+        res.status(400).json({ error: "لم يكتمل رفع الملف إلى التخزين." });
+        return;
+      }
+      logger.error({ err: error, botId: bot.id }, "Unable to finalize bot package");
+      res.status(503).json({
+        error: "تعذر التحقق من الملف المرفوع. حاول مرة أخرى لاحقاً.",
+      });
+    }
+  },
+);
 
 router.patch("/bots/:botId", async (req, res): Promise<void> => {
   const params = UpdateBotParams.safeParse(req.params);
